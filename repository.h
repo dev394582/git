@@ -53,6 +53,14 @@ struct repository {
 	char *commondir;
 
 	/*
+	 * The "prefix", a path to the current working directory relative to
+	 * the work tree root, or NULL, if the current working directory is not
+	 * a strict subdirectory of the work tree root. The prefix always ends
+	 * with a '/' character.
+	 */
+	char *prefix;
+
+	/*
 	 * Holds any information related to accessing the raw object content.
 	 */
 	struct object_database *objects;
@@ -116,6 +124,13 @@ struct repository {
 	char *worktree;
 	bool worktree_initialized;
 	bool worktree_config_is_bogus;
+
+	/*
+	 * Whether the repository is bare, as set by "core.bare" config or
+	 * inferred during repository discovery. -1 means unset/unknown, 0
+	 * means non-bare, 1 means bare.
+	 */
+	int bare_cfg;
 
 	/*
 	 * Path from the root of the top-level superproject down to this

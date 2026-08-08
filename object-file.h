@@ -5,6 +5,7 @@
 #include "object.h"
 #include "odb.h"
 #include "odb/source-loose.h"
+#include "odb/transaction.h"
 
 /* The maximum size for an object header. */
 #define MAX_HEADER_LEN 32
@@ -131,12 +132,12 @@ int finalize_object_file_flags(struct repository *repo,
 			       enum finalize_object_file_flags flags);
 
 void hash_object_file(const struct git_hash_algo *algo, const void *buf,
-		      unsigned long len, enum object_type type,
+		      size_t len, enum object_type type,
 		      struct object_id *oid);
 void write_object_file_prepare(const struct git_hash_algo *algo,
-			       const void *buf, unsigned long len,
+			       const void *buf, size_t len,
 			       enum object_type type, struct object_id *oid,
-			       char *hdr, int *hdrlen);
+			       char *hdr, size_t *hdrlen);
 int write_loose_object(struct odb_source_loose *loose,
 		       const struct object_id *oid, char *hdr,
 		       int hdrlen, const void *buf, unsigned long len,
@@ -194,9 +195,10 @@ struct odb_transaction;
 /*
  * Tell the object database to optimize for adding
  * multiple objects. odb_transaction_files_commit must be called
- * to make new objects visible. If a transaction is already
- * pending, NULL is returned.
+ * to make new objects visible.
  */
-struct odb_transaction *odb_transaction_files_begin(struct odb_source *source);
+int odb_transaction_files_begin(struct odb_source *source,
+				struct odb_transaction **out,
+				enum odb_transaction_flags flags);
 
 #endif /* OBJECT_FILE_H */
