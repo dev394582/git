@@ -354,15 +354,12 @@ static int is_racy_stat(const struct index_state *istate,
 			const struct stat_data *sd)
 {
 	return (istate->timestamp.sec &&
-#ifdef USE_NSEC
-		 /* nanosecond timestamped files can also be racy! */
-		(istate->timestamp.sec < sd->sd_mtime.sec ||
-		 (istate->timestamp.sec == sd->sd_mtime.sec &&
-		  istate->timestamp.nsec <= sd->sd_mtime.nsec))
-#else
-		istate->timestamp.sec <= sd->sd_mtime.sec
-#endif
-		);
+		/* nanosecond timestamped files can also be racy! */
+		(repo_config_values(istate->repo)->use_nanosec
+		 ? (istate->timestamp.sec < sd->sd_mtime.sec ||
+		    (istate->timestamp.sec == sd->sd_mtime.sec &&
+		     istate->timestamp.nsec <= sd->sd_mtime.nsec))
+		 : istate->timestamp.sec <= sd->sd_mtime.sec));
 }
 
 int is_racy_timestamp(const struct index_state *istate,
@@ -1748,7 +1745,7 @@ static int read_index_extension(struct index_state *istate,
 {
 	switch (CACHE_EXT(ext)) {
 	case CACHE_EXT_TREE:
-		istate->cache_tree = cache_tree_read(data, sz);
+		istate->cache_tree = cache_tree_read(istate->repo, data, sz);
 		break;
 	case CACHE_EXT_RESOLVE_UNDO:
 		istate->resolve_undo = resolve_undo_read(data, sz, the_hash_algo);
@@ -3012,7 +3009,7 @@ static int do_write_index(struct index_state *istate, struct tempfile *tempfile,
 	    !drop_cache_tree && istate->cache_tree) {
 		strbuf_reset(&sb);
 
-		cache_tree_write(&sb, istate->cache_tree);
+		cache_tree_write(istate->repo, &sb, istate->cache_tree);
 		err = write_index_ext_header(f, eoie_c, CACHE_EXT_TREE, sb.len) < 0;
 		hashwrite(f, sb.buf, sb.len);
 		if (err) {
@@ -3733,7 +3730,8 @@ static void write_ieot_extension(struct strbuf *sb, struct index_entry_offset_ta
 }
 
 void prefetch_cache_entries(const struct index_state *istate,
-			    must_prefetch_predicate must_prefetch)
+			    must_prefetch_predicate must_prefetch,
+			    void *cb_data)
 {
 	int i;
 	struct oid_array to_fetch = OID_ARRAY_INIT;
@@ -3741,7 +3739,7 @@ void prefetch_cache_entries(const struct index_state *istate,
 	for (i = 0; i < istate->cache_nr; i++) {
 		struct cache_entry *ce = istate->cache[i];
 
-		if (S_ISGITLINK(ce->ce_mode) || !must_prefetch(ce))
+		if (S_ISGITLINK(ce->ce_mode) || !must_prefetch(ce, cb_data))
 			continue;
 		if (!odb_read_object_info_extended(the_repository->objects,
 						   &ce->oid, NULL,

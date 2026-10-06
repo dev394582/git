@@ -546,6 +546,25 @@ Performance, Internal Implementation, Development Support etc.
    interfered with "git rebase" etc. too much.  The conditions "rerere
    gc" gets triggered have been tweaked.
 
+ * Windows build switches from MINGW64 to URCR64 runtime starting Git
+   2.56.0; switch the cmake based build at the same time.
+
+ * The mechanism to register in-memory alternate object sources has
+   been removed, as submodule object databases are now accessed
+   natively via their own repository structures.  This simplifies
+   object database management and prepares the codebase for migrating
+   alternate tracking into the files backend.
+
+ * The consistency checks for the object database (fsck) have been
+   decoupled from the generic builtin implementation and moved into the
+   backend-specific object source layers, making them pluggable for
+   different object storage formats.
+
+ * When cross-compiling with Cargo, the output artifact is placed in a
+   target-specific subdirectory, which causes the build system to fail
+   to locate it.  The build system has been updated to respect the
+   'CARGO_BUILD_TARGET' environment variable.
+
 
 Fixes since v2.55
 -----------------
@@ -848,12 +867,6 @@ Fixes since v2.55
    Additionally, an obsolete variable used for retired Azure Pipelines
    environments has been removed.
 
- * Teach 'am', 'revert', and 'rebase' that running 'commit --amend' or a
-   partial 'commit <paths>' makes no sense during operations that stop
-   and return control to the user to resolve conflicts left in the
-   working tree, just like 'cherry-pick' and 'merge' do.
-   (merge cc499d40e5 en/no-amend-during-conflicts later to maint).
-
  * The error path in 'git submodule--helper' has been updated to plug a
    memory leak when a repository handle could not be obtained,
    leveraging an updated idempotent repo_clear().
@@ -869,7 +882,8 @@ Fixes since v2.55
    (merge ec602484bd kh/doc-datamodel later to maint).
 
  * Running "git history" in a corrupt repository can (unsurprisingly)
-   segfault when a necessary tree object is not found.
+   segfault when a necessary tree object is not found, which has been
+   made to die more gracefully.
    (merge 76621488e8 jc/history-missing-tree-errorfix later to maint).
 
  * The development helper script to lint gitlink references in the
@@ -882,6 +896,14 @@ Fixes since v2.55
    visually separates autostash conflict advice from the subsequent
    branch-switch message.
    (merge 2ba77ea828 hn/checkout-m-autostash-refine later to maint).
+
+ * The memory leak caused by not unusing the commit buffer returned by
+   repo_logmsg_reencode() during the rewording operation in 'git
+   history' has been plugged.
+
+ * The pathspec matching logic has been updated to avoid out-of-bounds
+   memory accesses when a negative pathspec is shorter than the common
+   prefix of positive pathspecs.
 
  * Other code cleanup, docfix, build fix, etc.
    (merge 026636128f ss/submittingpatches-typofix later to maint).
